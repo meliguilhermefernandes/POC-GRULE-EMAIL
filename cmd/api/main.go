@@ -180,20 +180,20 @@ func main() {
 		}
 
 		rule := `
-	rule CheckIfJSONIntWorks {
-		when 
-			Result.State == "No Result" && 
-			json.payment == "123" &&
-			json.payment_method == "bolbradesco" &&
-			json.amount > 10 &&
-			json.amount < 1000 &&
-			json.tax <= 10 &&
-			json.tax >= 1 &&
-			json.site != "ASD"
-		then
-			Result.State = "FOUND";
-			Result.ID = "456";
-	}`
+			rule CheckIfJSONIntWorks {
+				when 
+					Result.State == "No Result" && 
+					json.payment == "123" &&
+					json.payment_method == "bolbradesco" &&
+					json.amount > 10 &&
+					json.amount < 1000 &&
+					json.tax <= 10 &&
+					json.tax >= 1 &&
+					json.site != "ASD"
+				then
+					Result.State = "FOUND";
+					Result.ID = "456";
+			}`
 
 		// Prepare knowledgebase library and load it with our rule.
 		lib := ast.NewKnowledgeLibrary()
@@ -217,7 +217,12 @@ func main() {
 	})
 
 	http.HandleFunc("/teste-regras-repetidas", func(w http.ResponseWriter, r *http.Request) {
-
+		/* Json Exemplo:
+		   {
+		       "payment": "123",
+		       "amount": 5000
+		   }
+		*/
 		const rulesWithDiffSalience = `
 			rule Rule1 "Rule 1" salience 5 {
 			when
@@ -242,11 +247,11 @@ func main() {
 
 			rule Rule4 "Rule 4" salience 8 {
 			when
-			(R.Payment != "" && R.Amount > 8000) && (R.Result == false)
+			(R.Payment != "" && R.Amount > 8000 && R.Novocampo > 0) && (R.Result == false)
 			Then
 			R.Result=true;
 			}
-			
+
 			rule Rule5 "Rule 5" salience 9 {
 			when
 			(R.Payment != "" && R.Amount == 5000) && (R.Result == false)
