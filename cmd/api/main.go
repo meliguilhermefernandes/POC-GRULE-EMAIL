@@ -25,6 +25,12 @@ type Template struct {
 	ID    string
 }
 
+type RequesBody struct {
+	Payment string
+	Amount  float32
+	Result  bool
+}
+
 type Fact struct {
 	NetAmount float32
 	Distance  int32
@@ -178,11 +184,14 @@ func main() {
 		when 
 			Result.State == "No Result" && 
 			json.payment == "123" &&
+			json.payment == "123" &&
 			json.payment_method == "bolbradesco" &&
 			json.amount > 10 &&
-			json.tax < 10 &&
+			json.amount < 1000 &&
+			json.tax <= 10 &&
+			json.tax >= 1 &&
 			json.site != "ASD"
-		then 
+		then
 			Result.State = "FOUND";
 			Result.ID = "456";
 	}`
@@ -210,49 +219,52 @@ func main() {
 
 	http.HandleFunc("/teste-regras-repetidas", func(w http.ResponseWriter, r *http.Request) {
 
-		const duplicateRulesWithDiffSalience = `
-			rule  DuplicateRule1  "Duplicate Rule 1"  salience 5 {
+		const rulesWithDiffSalience = `
+			rule Rule1 "Rule 1" salience 5 {
 			when
-			(Fact.Distance > 5000  &&   Fact.Duration > 120) && (Fact.Result == false)
+			(R.Payment != "" && R.Amount >= 5000) && (R.Result == false)
 			Then
-			Fact.NetAmount=143.320007;
-			Fact.Result=true;
+			R.Result=true;
 			}
-			rule  DuplicateRule2  "Duplicate Rule 2"  salience 6 {
+
+			rule Rule2 "Rule 2" salience 6 {
 			when
-			(Fact.Distance > 5000  &&   Fact.Duration > 120) && (Fact.Result == false)
+			(R.Payment != "" && R.Amount > 6000) && (R.Result == false)
 			Then
-			Fact.NetAmount=143.320007;
-			Fact.Result=true;
+			R.Result=true;
 			}
-			rule  DuplicateRule3  "Duplicate Rule 3"  salience 7 {
+
+			rule Rule3 "Rule 3" salience 7 {
 			when
-			(Fact.Distance > 5000  &&   Fact.Duration > 120) && (Fact.Result == false)
+			(R.Payment != "" && R.Amount > 7000) && (R.Result == false)
 			Then
-			Fact.NetAmount=143.320007;
-			Fact.Result=true;
+			R.Result=true;
 			}
-			rule  DuplicateRule4  "Duplicate Rule 4"  salience 8 {
+
+			rule Rule4 "Rule 4" salience 8 {
 			when
-			(Fact.Distance > 5000  &&   Fact.Duration > 120) && (Fact.Result == false)
+			(R.Payment != "" && R.Amount > 8000) && (R.Result == false)
 			Then
-			Fact.NetAmount=143.320007;
-			Fact.Result=true;
+			R.Result=true;
 			}
-			rule  DuplicateRule5  "Duplicate Rule 5"  salience 9 {
+			
+			rule Rule5 "Rule 5" salience 9 {
 			when
-			(Fact.Distance > 5000  &&   Fact.Duration == 120) && (Fact.Result == false)
+			(R.Payment != "" && R.Amount == 5000) && (R.Result == false)
 			Then
-			Output.NetAmount=143.320007;
-			Fact.Result=true;
+			R.Result=true;
 			}`
 
-		fact := &Fact{
-			Distance: 6000,
-			Duration: 121,
+		var requestBody RequesBody
+
+		err := json.NewDecoder(r.Body).Decode(&requestBody)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
+
 		dctx := ast.NewDataContext()
-		err := dctx.Add("Fact", fact)
+		err = dctx.Add("R", requestBody)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -260,13 +272,13 @@ func main() {
 
 		lib := ast.NewKnowledgeLibrary()
 		rb := builder.NewRuleBuilder(lib)
-		err = rb.BuildRuleFromResource("conflict_rules_test", "0.1.1", pkg.NewBytesResource([]byte(duplicateRulesWithDiffSalience)))
+		err = rb.BuildRuleFromResource("rules_test", "0.1.1", pkg.NewBytesResource([]byte(rulesWithDiffSalience)))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		kb := lib.NewKnowledgeBaseInstance("conflict_rules_test", "0.1.1")
+		kb := lib.NewKnowledgeBaseInstance("rules_test", "0.1.1")
 
 		e := engine.NewGruleEngine()
 		ruleEntries, err := e.FetchMatchingRules(dctx, kb)
@@ -278,7 +290,7 @@ func main() {
 
 		fmt.Fprintf(w, "Number of ruleEntries  %d\n", len(ruleEntries))
 		for position, rule := range ruleEntries {
-			fmt.Fprintf(w, "RuleEntries Position in Rules Array = %d AND Salience = %d\n", position, rule.Salience)
+			fmt.Fprintf(w, "Rule Name = %s AND Position = %d AND Salience = %d\n", rule.RuleName, position, rule.Salience)
 		}
 	})
 
