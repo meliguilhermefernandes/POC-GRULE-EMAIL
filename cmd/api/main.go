@@ -184,7 +184,6 @@ func main() {
 		when 
 			Result.State == "No Result" && 
 			json.payment == "123" &&
-			json.payment == "123" &&
 			json.payment_method == "bolbradesco" &&
 			json.amount > 10 &&
 			json.amount < 1000 &&
